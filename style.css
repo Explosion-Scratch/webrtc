@@ -105,12 +105,16 @@ video {
 	color: #7367f0;
 	cursor: pointer;
 	font-size: 3rem;
-	padding: 15px;
 	border-radius: 10px;
 	background: transparent;
 	margin: 8px;
 	border: none;
 	position: relative;
+	width: 70px;
+	height: 70px;
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
 }
 .buttons button::before {  
   content: '';

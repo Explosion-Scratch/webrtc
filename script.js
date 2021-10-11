@@ -228,6 +228,7 @@ async function init({ action, id, peer }) {
 				title: "Stream stopped",
 				timer: 5000,
 			});
+			setTimeout(() => peer.destroy(), 100);
 		};
 		document.querySelector("#stop").onclick = ({currentTarget: el}) => {
 			Toast.fire({
@@ -333,6 +334,7 @@ function enable(stream, enabled){
 	stream.getTracks().forEach(i => i.enabled = enabled);
 }
 async function getMedia(){
+	var mediaStream;
 	try {
 		var {value: options} = await swal.fire({
 				title: "Select your sources",
@@ -369,7 +371,7 @@ async function getMedia(){
 				,
 		});
 
-		var mediaStream = await getStream(options);
+		mediaStream = await getStream(options);
 		} catch(e) { 
 			var {value} = await swal.fire({
 				title: "Error",
@@ -387,6 +389,9 @@ async function getMedia(){
 					popup: "fullscreen"
 				}
 			})
+			try {
+				mediaStream.getTracks().forEach(i => i.stop())
+			}catch(e){}
 			if (value === true){
 					mediaStream = "retry";
 			} else {
@@ -450,11 +455,14 @@ async function getStream({audio, video}) {
         return;
     }
     if (permissions.both.audio) {
-        audioStream = mixAudio(get("audio", streams.system), get("audio", streams.display))
+				const audioStreams = [get("audio", streams.system), get("audio", streams.display)];
+				console.log(audioStreams, mixAudio(...audioStreams));
+        audioStream = mixAudio(...audioStreams)
         if (!audioStream) {
             throw new Error(`You selected to mix microphone audio and system audio but your ${get("audio", streams.system) ? "system" : "microphone"} audio was not given.`);
             return;
         }
+				return createStream(videoStream, ...audioStream)
     }
     return createStream(videoStream, audioStream);
 }
@@ -470,6 +478,10 @@ function mixAudio(desktopStream, voiceStream) {
     // Return undefined if both are not avalible.
     if (!(desktopStream && voiceStream))
         return undefined;
+		console.log({desktopStream, voiceStream})
+		// desktopStream and voiceStream are tracks not streams here
+		desktopStream = createStream(desktopStream);
+		voiceStream = createStream(voiceStream);
     const context = new AudioContext();
     const source1 = context.createMediaStreamSource(desktopStream);
     const source2 = context.createMediaStreamSource(voiceStream);
@@ -483,8 +495,8 @@ function mixAudio(desktopStream, voiceStream) {
 
     source1.connect(desktopGain).connect(destination);
     source2.connect(voiceGain).connect(destination);
-
-    return destination.stream.getTracks();
+		// Important to return tracks
+    return destination.stream.getAudioTracks();
 }
 
 function createStream(...tracks) {
